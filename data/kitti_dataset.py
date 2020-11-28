@@ -11,6 +11,12 @@ from torch.utils.data import Dataset
 def load_as_float(path):
     return imread(path).astype(np.float32)
 
+# utils.transforms
+def array_to_tensor(image):
+    '''Convert numpy.ndarray (H x W x C) to a torch.FloatTensor (C x H x W)'''
+    image = np.transpose(image, (2, 0, 1))
+    return torch.from_numpy(image / 255)
+
 
 class KITTIDataset(Dataset):
     IMG_EXT = '.jpg'
@@ -35,7 +41,8 @@ class KITTIDataset(Dataset):
         tgt_img = self.load_image(folder, frame_index, side)
         ref_imgs = [self.load_image(folder, frame_index - 1, side),
                     self.load_image(folder, frame_index - 1, side)]
-        print(type(tgt_img), type(ref_imgs), type(self.K))
+        print('tgt_img<{}>, shape={}'.format(type(tgt_img), tgt_img.shape))
+        # print(type(tgt_img), type(ref_imgs), type(self.K))
         return tgt_img, ref_imgs, self.K
 
     def load_image(self, folder, frame_index, side):
@@ -44,5 +51,6 @@ class KITTIDataset(Dataset):
                                 folder,
                                 'image_0{}/data'.format(self.SIDE_MAP[side]),
                                 fname)
+        print(fullpath)
         array = load_as_float(fullpath)
-        return torch.from_numpy(array) # TODO / 255
+        return array_to_tensor(array)

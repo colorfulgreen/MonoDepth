@@ -2,7 +2,7 @@ import torch.nn as nn
 import torchvision.models as models
 
 
-class ResNet18(nn.Modules):
+class ResNet18(nn.Module):
 
     def __init__(self):
         super(ResNet18, self).__init__()
@@ -10,12 +10,13 @@ class ResNet18(nn.Modules):
 
     def forward(self, x):
         '''返回所有层的特征，以便 decoder 中添加 identity connection'''
+        import pdb; pdb.set_trace()
         out_conv1 = self.encoder.conv1(x)
         out_bn1 = self.encoder.bn1(out_conv1)
         out_relu1 = self.encoder.relu(out_bn1)
 
         out_layer1 = self.encoder.layer1(out_relu1)
         out_layer2 = self.encoder.layer2(out_layer1)
-        out_layer3 = self.encoder.layer2(out_layer2)
-        out_layer4 = self.encoder.layer2(out_layer3)
+        out_layer3 = self.encoder.layer3(out_layer2)
+        out_layer4 = self.encoder.layer4(out_layer3)
         return [out_relu1, out_layer1, out_layer2, out_layer3, out_layer4]
