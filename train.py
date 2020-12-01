@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from data.kitti_dataset import KITTIDataset
-from nets.resnet import ResNet18
+from nets.resnet import ResNet18, ResNet18MultiImageInput
 from nets.depth_decoder import DepthDecoder
 from nets.pose_decoder import PoseDecoder
 
@@ -26,20 +26,27 @@ class Train(object):
             data_splits = [i.strip() for i in f]
         train_set = KITTIDataset(DATA_PATH, data_splits)
         train_loader = DataLoader(train_set)
-        encoder = ResNet18()
+
+        depth_encoder = ResNet18()
         depth_decoder = DepthDecoder()
+        depth_encoder.to(device)
+        depth_decoder.to(device)
+
+        pose_encoder = ResNet18MultiImageInput(n_images=3)
         pose_decoder = PoseDecoder()
+        pose_encoder.to(device)
+        pose_decoder.to(device)
 
         for tgt_img, ref_imgs, K in train_loader:
-            import pdb; pdb.set_trace()
             tgt_img = tgt_img.to(device)
             ref_imgs = [img.to(device) for img in ref_imgs]
 
-            disp_features = encoder(tgt_img)
-            disparities = (disp_features)
+            disp_features = depth_encoder(tgt_img)
+            disparities = depth_decoder(disp_features)
 
-            pose_features = ResNet18(torch.cat([tgt_img] + ref_imgs, 1))
-            poses = PoseDecoder(pose_features)
+            # import pdb; pdb.set_trace()
+            pose_features = pose_encoder(torch.cat([tgt_img] + ref_imgs, 1))
+            poses = pose_decoder(pose_features)
 
         loss = photometric_reconstruction_loss(tgt_img, ref_imgs, K, disparities, poses)
 

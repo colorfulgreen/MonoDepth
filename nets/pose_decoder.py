@@ -23,5 +23,5 @@ class PoseDecoder(nn.Module):
         out_conv0 = self.conv0(out_conv1)
         pose = out_conv0.mean(3).mean(2)
         # TODO we follow [62] ... and scale the outputs by 0.01
-        pose = 0.01 * out.view(-1, N_REFS, 1, 6)
+        pose = 0.01 * pose.view(-1, N_REFS, 1, 6)
         return pose

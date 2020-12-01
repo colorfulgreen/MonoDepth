@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -45,34 +46,36 @@ class DepthDecoder(nn.Module):
         self.disp0 = predict_disp(n_planes[5])
 
     def forward(self, encode_features):
-        x = encoded_features[-1]
+        x = encode_features[-1]
 
         out_upconv4 = self.upconv4(x)
         out_upsample4 = upsample(out_upconv4)
-        concat4 = torch.cat(out_upsample4, encode_features[4])
+        import pdb; pdb.set_trace()
+        # TODO encoder 和 decoder 的层对应关系
+        concat4 = torch.cat([out_upsample4, encode_features[3]], 1)
         out_iconv4 = self.iconv4(concat4)
 
         out_upconv3 = self.upconv3(x)
         out_upsample3 = upsample(out_upconv3)
-        concat3 = torch.cat(out_upsample3, encode_features[3])
+        concat3 = torch.cat([out_upsample3, encode_features[2]], 1)
         out_iconv3 = self.iconv4(concat3)
         disp3 = self.disp3(out_iconv3)
 
         out_upconv2 = self.upconv2(x)
         out_upsample2 = upsample(out_upconv2)
-        concat2 = torch.cat(out_upsample2, encode_features[2])
+        concat2 = torch.cat([out_upsample2, encode_features[1]], 1)
         out_iconv2 = self.iconv2(concat2)
         disp2 = self.disp2(out_iconv2)
 
         out_upconv1 = self.upconv1(x)
         out_upsample1 = upsample(out_upconv1)
-        concat1 = torch.cat(out_upsample1, encode_features[1])
+        concat1 = torch.cat([out_upsample1, encode_features[0]], 1)
         out_iconv1 = self.iconv1(concat1)
         disp1 = self.disp1(out_iconv1)
 
         out_upconv0 = self.upconv0(x)
         out_upsample0 = upsample(out_upconv0)
-        concat0 = torch.cat(out_upsample0, encode_features[0])
+        concat0 = torch.cat(out_upsample0, 1) # TODO 最后一层的 cat
         out_iconv0 = self.iconv0(concat0)
         disp0 = self.disp0(out_iconv0)
 
