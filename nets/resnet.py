@@ -15,11 +15,20 @@ class ResNet18(nn.Module):
         out_bn1 = self.encoder.bn1(out_conv1)
         out_relu1 = self.encoder.relu(out_bn1)
 
-        out_layer1 = self.encoder.layer1(out_relu1)
+        out_pool1 = self.encoder.maxpool(out_relu1)
+
+        out_layer1 = self.encoder.layer1(out_pool1)
         out_layer2 = self.encoder.layer2(out_layer1)
         out_layer3 = self.encoder.layer3(out_layer2)
         out_layer4 = self.encoder.layer4(out_layer3)
-        return [out_relu1, out_layer1, out_layer2, out_layer3, out_layer4]
+        features = [out_relu1, out_layer1, out_layer2, out_layer3, out_layer4]
+        print('====> RESNET18 FEATURES')
+        print('input', x.shape)
+        for i, f in enumerate(features):
+            print(i, f.shape)
+        print('=======================')
+
+        return features
 
 
 class ResNet18MultiImageInput(ResNet18):
