@@ -22,11 +22,12 @@ class ResNet18(nn.Module):
         out_layer3 = self.encoder.layer3(out_layer2)
         out_layer4 = self.encoder.layer4(out_layer3)
         features = [out_relu1, out_layer1, out_layer2, out_layer3, out_layer4]
-        print('====> RESNET18 FEATURES')
-        print('input', x.shape)
-        for i, f in enumerate(features):
-            print(i, f.shape)
-        print('=======================')
+        if False:
+            print('====> RESNET18 FEATURES')
+            print('input', x.shape)
+            for i, f in enumerate(features):
+                print(i, f.shape)
+            print('=======================')
 
         return features
 

@@ -59,8 +59,7 @@ class KITTIDataset(Dataset):
         # array to tensor
         tgt_img = array_to_tensor(tgt_img)
         ref_imgs = [array_to_tensor(img) for img in ref_imgs]
-        print('tgt_img<{}>, shape={}'.format(type(tgt_img), tgt_img.shape))
-
+        # print('tgt_img<{}>, shape={}'.format(type(tgt_img), tgt_img.shape))
         # print(type(tgt_img), type(ref_imgs), type(self.K))
         return tgt_img, ref_imgs, self.K
 
@@ -70,5 +69,5 @@ class KITTIDataset(Dataset):
                                 folder,
                                 'image_0{}/data'.format(self.SIDE_MAP[side]),
                                 fname)
-        print(fullpath)
+        # print(fullpath)
         return load_as_float(fullpath)
