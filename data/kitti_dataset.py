@@ -30,16 +30,17 @@ def resize(image, height, width):
 class KITTIDataset(Dataset):
     IMG_EXT = '.jpg'
     SIDE_MAP = {'l': 2, 'r': 3}
-    WIDTH, HEIGHT = 640, 192
 
-    def __init__(self, data_path, data_splits):
+    def __init__(self, data_path, data_splits, width, height, device):
         self.data_path = data_path
         self.data_splits = data_splits
-        # TODO intrinsics
-        self.K = np.array([[0.58, 0, 0.5, 0],
-                           [0, 1.92, 0.5, 0],
-                           [0, 0, 1, 0],
-                           [0, 0, 0, 1]], dtype=np.float32)
+        self.width = width
+        self.height = height
+        # TODO intrinsics; device 参数可能不需要
+        self.K = torch.from_numpy(
+                    np.array([[0.58, 0, 0.5],
+                              [0, 1.92, 0.5],
+                              [0, 0, 1]], dtype=np.float32)).to(device)
 
     def __len__(self):
         return len(self.data_splits)
@@ -53,8 +54,8 @@ class KITTIDataset(Dataset):
                     self.load_image(folder, frame_index - 1, side)]
 
         # resize
-        tgt_img = resize(tgt_img, self.HEIGHT, self.WIDTH)
-        ref_imgs = [resize(img, self.HEIGHT, self.WIDTH) for img in ref_imgs]
+        tgt_img = resize(tgt_img, self.height, self.width)
+        ref_imgs = [resize(img, self.height, self.width) for img in ref_imgs]
 
         # array to tensor
         tgt_img = array_to_tensor(tgt_img)
