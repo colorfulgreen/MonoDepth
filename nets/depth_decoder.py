@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 def upconv(in_planes, out_planes):
     return nn.Sequential(
-        nn.Conv2d(in_planes, out_planes, kernel_size=(3, 3), stride=(1,1)),
+        nn.Conv2d(in_planes, out_planes, kernel_size=3, stride=1, padding=1), # zero-paddings
         nn.ELU(alpha=1.0, inplace=True)
     )
 
