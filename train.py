@@ -9,6 +9,7 @@ from nets.resnet import ResNet18, ResNet18MultiImageInput
 from nets.depth_decoder import DepthDecoder
 from nets.pose_decoder import PoseDecoder
 from losses.photometric_reconstruction_loss import BackprojectDepth, Project3D, pose_vec2mat
+from tensorboardX import SummaryWriter
 
 
 BASE_DIR = Path(__file__).realpath().dirname()
@@ -46,6 +47,9 @@ class Train(object):
         ]
         self.optimizer = torch.optim.Adam(optim_params, lr=1e-4)
 
+        self.n_iter = 0
+        self.tb_writer = SummaryWriter()
+
     def train(self):
         with open(TRAIN_SPLITS_PATH) as f:
             data_splits = [i.strip() for i in f]
@@ -53,7 +57,7 @@ class Train(object):
         train_loader = DataLoader(train_set)
 
 
-        for tgt_img, ref_imgs, intrinsics in train_loader:
+        for i, (tgt_img, ref_imgs, intrinsics) in enumerate(train_loader):
             tgt_img = tgt_img.to(device)
             ref_imgs = [img.to(device) for img in ref_imgs]
 
@@ -66,7 +70,11 @@ class Train(object):
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            print('LOSS:', loss)
+            if i % 10 == 0:
+                print('LOSS:', loss)
+
+            self.n_iter += 1
+            self.tb_writer.add_scalar('photometric_error', loss.item(), self.n_iter)
 
     def photometric_reconstruction_loss(self, tgt_img, ref_imgs, intrinsics, disparities, poses):
         losses = []
