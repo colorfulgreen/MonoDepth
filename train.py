@@ -1,3 +1,4 @@
+import os
 from path import Path
 
 import torch
@@ -70,11 +71,16 @@ class Train(object):
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
-            if i % 10 == 0:
-                print('LOSS:', loss)
 
             self.n_iter += 1
             self.tb_writer.add_scalar('photometric_error', loss.item(), self.n_iter)
+
+            if i % 100 == 0:
+                print(i)
+            if i == 1000:
+                break
+
+        self.save_model()
 
     def photometric_reconstruction_loss(self, tgt_img, ref_imgs, intrinsics, disparities, poses):
         losses = []
@@ -92,6 +98,13 @@ class Train(object):
         min_loss, _ = torch.min(torch.cat(losses, dim=1), dim=1)
         # import pdb; pdb.set_trace()
         return min_loss.mean()
+
+    def save_model(self):
+        folder = os.path.join(BASE_DIR, 'runs', 'models')
+        torch.save(self.depth_encoder, os.path.join(folder, 'depth_encoder.pth'))
+        torch.save(self.depth_decoder, os.path.join(folder, 'depth_decoder.pth'))
+        torch.save(self.pose_encoder, os.path.join(folder, 'pose_encoder.pth'))
+        torch.save(self.pose_encoder, os.path.join(folder, 'pose_decoder.pth'))
 
 
 if __name__ == '__main__':
