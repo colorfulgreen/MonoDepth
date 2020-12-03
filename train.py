@@ -28,32 +28,44 @@ class Train(object):
         self.backproject_depth = BackprojectDepth(self.W, self.H, device)
         self.project_3d = Project3D(self.W, self.H)
 
+        self.depth_encoder = ResNet18()
+        self.depth_decoder = DepthDecoder()
+        self.pose_encoder = ResNet18MultiImageInput(n_images=3)
+        self.pose_decoder = PoseDecoder()
+
+        self.depth_encoder.to(device)
+        self.depth_decoder.to(device)
+        self.pose_encoder.to(device)
+        self.pose_decoder.to(device)
+
+        optim_params = [
+            {'params': self.depth_encoder.parameters()},
+            {'params': self.depth_decoder.parameters()},
+            {'params': self.pose_encoder.parameters()},
+            {'params': self.pose_decoder.parameters()}
+        ]
+        self.optimizer = torch.optim.Adam(optim_params, lr=1e-4)
+
     def train(self):
         with open(TRAIN_SPLITS_PATH) as f:
             data_splits = [i.strip() for i in f]
         train_set = KITTIDataset(DATA_PATH, data_splits, self.W, self.H, device)
         train_loader = DataLoader(train_set)
 
-        depth_encoder = ResNet18()
-        depth_decoder = DepthDecoder()
-        depth_encoder.to(device)
-        depth_decoder.to(device)
-
-        pose_encoder = ResNet18MultiImageInput(n_images=3)
-        pose_decoder = PoseDecoder()
-        pose_encoder.to(device)
-        pose_decoder.to(device)
 
         for tgt_img, ref_imgs, intrinsics in train_loader:
             tgt_img = tgt_img.to(device)
             ref_imgs = [img.to(device) for img in ref_imgs]
 
-            disp_features = depth_encoder(tgt_img)
-            disparities = depth_decoder(disp_features)
+            disp_features = self.depth_encoder(tgt_img)
+            disparities = self.depth_decoder(disp_features)
+            pose_features = self.pose_encoder(torch.cat([tgt_img] + ref_imgs, 1))
+            poses = self.pose_decoder(pose_features)
 
-            pose_features = pose_encoder(torch.cat([tgt_img] + ref_imgs, 1))
-            poses = pose_decoder(pose_features)
             loss = self.photometric_reconstruction_loss(tgt_img, ref_imgs, intrinsics, disparities, poses)
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
             print('LOSS:', loss)
 
     def photometric_reconstruction_loss(self, tgt_img, ref_imgs, intrinsics, disparities, poses):
@@ -70,6 +82,7 @@ class Train(object):
             l1_loss = abs_diff.mean(1, True)
             losses.append(l1_loss)
         min_loss, _ = torch.min(torch.cat(losses, dim=1), dim=1)
+        # import pdb; pdb.set_trace()
         return min_loss.mean()
 
 
