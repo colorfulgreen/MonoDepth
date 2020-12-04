@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 
-@torch.no_grad()
 def depth_error_and_accuracy_metric(gt, pred):
     thresh = np.maximum((gt / pred), (pred / gt))
     a1 = (thresh < 1.25).mean()

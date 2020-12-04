@@ -4,6 +4,9 @@
 # which allows for non-commercial use only, the full terms of which are made
 # available in the LICENSE file.
 
+# python3 export_gt_depth.py --data_path ../monodepth2/kitti_data --split eigen
+
+
 from __future__ import absolute_import, division, print_function
 
 import os

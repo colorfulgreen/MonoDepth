@@ -17,8 +17,6 @@ BASE_DIR = Path(__file__).realpath().dirname()
 # DATA_PATH = os.path.join(BASE_DIR, 'kitti_data')
 DATA_PATH = '../monodepth2/kitti_data'
 TRAIN_SPLITS_PATH = 'splits/eigen_zhou/train_files.txt'
-VAL_SPLITS_PATH = 'splits/eigen_zhou/val_files.txt'
-
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -54,7 +52,7 @@ class Train(object):
     def train(self):
         with open(TRAIN_SPLITS_PATH) as f:
             data_splits = [i.strip() for i in f]
-        train_set = KITTIDataset(DATA_PATH, data_splits, self.W, self.H, device)
+        train_set = KITTIDataset(DATA_PATH, data_splits, self.W, self.H, device, [-1, 1])
         train_loader = DataLoader(train_set)
 
 
@@ -77,8 +75,6 @@ class Train(object):
 
             if i % 100 == 0:
                 print(i)
-            if i == 1000:
-                break
 
         self.save_model()
 

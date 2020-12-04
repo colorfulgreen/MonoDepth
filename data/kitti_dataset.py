@@ -31,7 +31,7 @@ class KITTIDataset(Dataset):
     IMG_EXT = '.jpg'
     SIDE_MAP = {'l': 2, 'r': 3}
 
-    def __init__(self, data_path, data_splits, width, height, device):
+    def __init__(self, data_path, data_splits, width, height, device, ref_frame_idxs):
         self.data_path = data_path
         self.data_splits = data_splits
         self.width = width
@@ -41,6 +41,7 @@ class KITTIDataset(Dataset):
                     np.array([[0.58, 0, 0.5],
                               [0, 1.92, 0.5],
                               [0, 0, 1]], dtype=np.float32)).to(device)
+        self.ref_frame_idxs = ref_frame_idxs
 
     def __len__(self):
         return len(self.data_splits)
@@ -50,8 +51,8 @@ class KITTIDataset(Dataset):
         folder, frame_index, side = self.data_splits[index].split()
         frame_index = int(frame_index)
         tgt_img = self.load_image(folder, frame_index, side)
-        ref_imgs = [self.load_image(folder, frame_index - 1, side),
-                    self.load_image(folder, frame_index - 1, side)]
+        ref_imgs = [self.load_image(folder, frame_index + idx, side)
+                    for idx in self.ref_frame_idxs]
 
         # resize
         tgt_img = resize(tgt_img, self.height, self.width)
@@ -70,5 +71,4 @@ class KITTIDataset(Dataset):
                                 folder,
                                 'image_0{}/data'.format(self.SIDE_MAP[side]),
                                 fname)
-        # print(fullpath)
         return load_as_float(fullpath)
