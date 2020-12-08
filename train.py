@@ -26,12 +26,13 @@ class Train(object):
 
     def __init__(self):
         self.W, self.H = 640, 192
-        self.batch_size = 12
-        self.backproject_depth = BackprojectDepth(self.W, self.H, device, self.batch_size)
+        self.BATCH_SIZE = 12
+        self.SCALES = [0, 1, 2, 3]
+        self.backproject_depth = BackprojectDepth(self.W, self.H, device, self.BATCH_SIZE)
         self.ssim = SSIM()
         self.ssim.to(device)
 
-        self.project_3d = Project3D(self.W, self.H, self.batch_size)
+        self.project_3d = Project3D(self.W, self.H, self.BATCH_SIZE)
 
         self.depth_encoder = ResNet18()
         self.depth_decoder = DepthDecoder()
@@ -58,8 +59,7 @@ class Train(object):
         with open(TRAIN_SPLITS_PATH) as f:
             data_splits = [i.strip() for i in f]
         train_set = KITTIDataset(DATA_PATH, data_splits, self.W, self.H, device, [-1, 1])
-        train_loader = DataLoader(train_set, self.batch_size)
-
+        train_loader = DataLoader(train_set, self.BATCH_SIZE)
 
         for i, (tgt_img, ref_imgs, intrinsics) in enumerate(train_loader):
             tgt_img = tgt_img.to(device)
@@ -70,7 +70,8 @@ class Train(object):
             pose_features = self.pose_encoder(torch.cat([tgt_img] + ref_imgs, 1))
             poses = self.pose_decoder(pose_features)
 
-            loss = self.photometric_reconstruction_loss(tgt_img, ref_imgs, intrinsics, disparities, poses)
+            loss = self.compute_losses(tgt_img, ref_imgs, intrinsics, disparities, poses)
+
             self.optimizer.zero_grad()
             loss.backward()
             self.optimizer.step()
@@ -83,9 +84,20 @@ class Train(object):
 
         self.save_model()
 
-    def photometric_reconstruction_loss(self, tgt_img, ref_imgs, intrinsics, disparities, poses):
+    def compute_losses(self, tgt_img, ref_imgs, intrinsics, disparities, poses):
+        total_loss = 0
+        for scale in self.SCALES:
+            disp = disparities[scale]
+            reprojection_loss = self.photometric_reconstruction_loss(tgt_img, ref_imgs, intrinsics, disp, poses)
+            total_loss += reprojection_loss
+        return total_loss / len(self.SCALES)
+
+
+    def photometric_reconstruction_loss(self, tgt_img, ref_imgs, intrinsics, disp, poses):
+        if disp.shape != tgt_img.shape:
+            disp = F.interpolate(disp, [self.H, self.W], mode='bilinear', align_corners=False)
         losses = []
-        depth = 1 / disparities[-1] # TODO depth & scales
+        depth = 1 / disp # TODO depth
         cam_coords = self.backproject_depth(depth, intrinsics.inverse())
 
         for i, ref_img in enumerate(ref_imgs):
