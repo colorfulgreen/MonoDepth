@@ -10,6 +10,7 @@ from nets.resnet import ResNet18, ResNet18MultiImageInput
 from nets.depth_decoder import DepthDecoder
 from nets.pose_decoder import PoseDecoder
 from losses.photometric_reconstruction_loss import BackprojectDepth, Project3D, pose_vec2mat
+from losses.ssim import SSIM
 from tensorboardX import SummaryWriter
 
 
@@ -25,8 +26,12 @@ class Train(object):
 
     def __init__(self):
         self.W, self.H = 640, 192
-        self.backproject_depth = BackprojectDepth(self.W, self.H, device)
-        self.project_3d = Project3D(self.W, self.H)
+        self.batch_size = 12
+        self.backproject_depth = BackprojectDepth(self.W, self.H, device, self.batch_size)
+        self.ssim = SSIM()
+        self.ssim.to(device)
+
+        self.project_3d = Project3D(self.W, self.H, self.batch_size)
 
         self.depth_encoder = ResNet18()
         self.depth_decoder = DepthDecoder()
@@ -53,7 +58,7 @@ class Train(object):
         with open(TRAIN_SPLITS_PATH) as f:
             data_splits = [i.strip() for i in f]
         train_set = KITTIDataset(DATA_PATH, data_splits, self.W, self.H, device, [-1, 1])
-        train_loader = DataLoader(train_set)
+        train_loader = DataLoader(train_set, self.batch_size)
 
 
         for i, (tgt_img, ref_imgs, intrinsics) in enumerate(train_loader):
@@ -89,8 +94,10 @@ class Train(object):
             pixel_coords = self.project_3d(cam_coords, intrinsics, T)
             projected_img = F.grid_sample(tgt_img, pixel_coords, padding_mode='zeros', align_corners=True)
             abs_diff = torch.abs(tgt_img - projected_img)
-            l1_loss = abs_diff.mean(1, True)
-            losses.append(l1_loss)
+            l1_loss = abs_diff.mean(1, True) # [12, 1, 192, 640]
+            ssim_loss = self.ssim(projected_img, tgt_img)
+            reprojection_loss = 0.85 * ssim_loss + 0.15 * l1_loss
+            losses.append(reprojection_loss)
         min_loss, _ = torch.min(torch.cat(losses, dim=1), dim=1)
         # import pdb; pdb.set_trace()
         return min_loss.mean()

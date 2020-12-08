@@ -5,14 +5,15 @@ import numpy as np
 class BackprojectDepth(object):
     '''Transform a depth image (in pixel frame) into a point cloud (in camera frame). '''
 
-    def __init__(self, width, height, device):
-        self.batch_size = 1 # TODO
+    def __init__(self, width, height, device, batch_size):
+        self.batch_size = batch_size
         self.width = width
         self.height = height
         meshgrid = np.meshgrid(range(self.width), range(self.height), indexing='xy')
         meshgrid = torch.from_numpy(np.stack(meshgrid, axis=0)).to(device)
         self.pixel_coords = torch.unsqueeze(torch.stack([meshgrid[0].view(-1),
                                                          meshgrid[1].view(-1)], 0), 0)
+        self.pixel_coords = self.pixel_coords.repeat(self.batch_size, 1, 1)
         self.ones = torch.ones(self.batch_size, 1, self.height * self.width).to(device)
         self.pixel_coords = torch.cat([self.pixel_coords,
                                        self.ones], dim=1)
@@ -30,8 +31,8 @@ class BackprojectDepth(object):
 class Project3D(object):
     '''Project 3D points into a camera with intrinsics K and at position T'''
 
-    def __init__(self, width, height):
-        self.batch_size = 1 # TODO
+    def __init__(self, width, height, batch_size):
+        self.batch_size = batch_size
         self.width = width
         self.height = height
 

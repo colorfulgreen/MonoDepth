@@ -7,6 +7,7 @@ from data.kitti_dataset import KITTIDataset, resize
 from nets.resnet import ResNet18
 from nets.depth_decoder import DepthDecoder
 from metrics.depth import depth_error_and_accuracy_metric
+from utils.color import trans_colormapped_depth_image
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 TEST_SPLITS_PATH = 'splits/eigen/test_files.txt'
@@ -37,6 +38,16 @@ def evaluate_depth():
         disp_features = depth_encoder(tgt_img)
         pred_disp = depth_decoder(disp_features)
         pred_disps.append(pred_disp[-1][0, 0, :].cpu().numpy()) # TODO scales
+
+        if False:
+            im_pred = trans_colormapped_depth_image(pred_disps[-1])
+            im_gt = trans_colormapped_depth_image(gt_depths[i])
+            plt.subplot(1,3,2)
+            plt.imshow(im_pred)
+            plt.subplot(1,3,3)
+            plt.imshow(im_gt)
+            plt.show()
+
         if i % 100 == 0: print(i)
 
     errors = []
