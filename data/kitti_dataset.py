@@ -36,18 +36,21 @@ class KITTIDataset(Dataset):
         self.data_splits = data_splits
         self.width = width
         self.height = height
-        # TODO intrinsics; device 参数可能不需要
+
+        # adjusting intrinsics to match scale
         self.K = torch.from_numpy(
                     np.array([[0.58, 0, 0.5],
                               [0, 1.92, 0.5],
                               [0, 0, 1]], dtype=np.float32)).to(device)
+        self.K[0, :] *= self.width
+        self.K[1, :] *= self.height
+
         self.ref_frame_idxs = ref_frame_idxs
 
     def __len__(self):
         return len(self.data_splits)
 
     def __getitem__(self, index):
-        # TODO batch_size = 12, n_scales = 4
         folder, frame_index, side = self.data_splits[index].split()
         frame_index = int(frame_index)
         tgt_img = self.load_image(folder, frame_index, side)
