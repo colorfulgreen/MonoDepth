@@ -29,6 +29,14 @@ class Train(object):
         self.W, self.H = 640, 192
         self.BATCH_SIZE = 12
         self.SCALES = [0, 1, 2, 3]
+        self.SCHEDULER_STEP_SIZE = 15
+        self.N_EPOCHS = 20
+
+        with open(TRAIN_SPLITS_PATH) as f:
+            data_splits = [i.strip() for i in f]
+        train_set = KITTIDataset(DATA_PATH, data_splits, self.W, self.H, device, [-1, 1])
+        self.train_loader = DataLoader(train_set, self.BATCH_SIZE, drop_last=True)
+
         self.backproject_depth = BackprojectDepth(self.W, self.H, device, self.BATCH_SIZE)
         self.ssim = SSIM()
         self.ssim.to(device)
@@ -52,17 +60,18 @@ class Train(object):
             {'params': self.pose_decoder.parameters()}
         ]
         self.optimizer = torch.optim.Adam(optim_params, lr=1e-4)
+        self.lr_scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, self.SCHEDULER_STEP_SIZE, gamma=0.1)
 
         self.n_iter = 0
         self.tb_writer = SummaryWriter()
 
     def train(self):
-        with open(TRAIN_SPLITS_PATH) as f:
-            data_splits = [i.strip() for i in f]
-        train_set = KITTIDataset(DATA_PATH, data_splits, self.W, self.H, device, [-1, 1])
-        train_loader = DataLoader(train_set, self.BATCH_SIZE)
+        for epoch in range(self.N_EPOCHS):
+            self.run_epoch()
 
-        for i, (tgt_img, ref_imgs, intrinsics) in enumerate(train_loader):
+    def run_epoch(self):
+        self.lr_scheduler.step()
+        for i, (tgt_img, ref_imgs, intrinsics) in enumerate(self.train_loader):
             tgt_img = tgt_img.to(device)
             ref_imgs = [img.to(device) for img in ref_imgs]
 
@@ -80,8 +89,8 @@ class Train(object):
             self.n_iter += 1
             self.tb_writer.add_scalar('photometric_error', loss.item(), self.n_iter)
 
-            if i % 100 == 0:
-                print(i)
+            if i % 10 == 0:
+                print(i, loss)
 
         self.save_model()
 
