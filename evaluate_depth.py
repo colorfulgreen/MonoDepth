@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 
 from config import DATA_PATH, DEPTH_ENCODER_PATH, DEPTH_DECODER_PATH, W, H
 from data.kitti_dataset import KITTIDataset, resize
@@ -8,6 +9,7 @@ from nets.resnet import ResNet18
 from nets.depth_decoder import DepthDecoder
 from metrics.depth import depth_error_and_accuracy_metric
 from utils.color import trans_colormapped_depth_image
+from utils import disp_to_depth
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 TEST_SPLITS_PATH = 'splits/eigen/test_files.txt'
@@ -39,8 +41,10 @@ def evaluate_depth():
         pred_disp = depth_decoder(disp_features)
         pred_disps.append(pred_disp[-1][0, 0, :].cpu().numpy()) # TODO scales
 
-        if False:
-            im_pred = trans_colormapped_depth_image(pred_disps[-1])
+        if True:
+            _, pred_depth = disp_to_depth(pred_disps[-1])
+            import pdb; pdb.set_trace()
+            im_pred = trans_colormapped_depth_image(pred_depth)
             im_gt = trans_colormapped_depth_image(gt_depths[i])
             plt.subplot(1,3,2)
             plt.imshow(im_pred)
@@ -54,9 +58,9 @@ def evaluate_depth():
     for i, pred_disp in enumerate(pred_disps):
         gt_depth = gt_depths[i]
         gt_height, gt_width = gt_depth.shape[:2]
-#import pdb; pdb.set_trace()
+
         pred_disp = resize(pred_disp, gt_height, gt_width)
-        pred_depth = 1 / pred_disp
+        _, pred_depth = disp_to_depth(pred_disp)
 
         # TODO
         mask = np.logical_and(gt_depth > MIN_DEPTH, gt_depth < MAX_DEPTH)

@@ -55,7 +55,6 @@ class Project3D(object):
         pixel_coords = (pixel_coords - 0.5) * 2 # [-1, 1]
         return pixel_coords
 
-
 # utils
 def euler2mat(angle):
     # TODO

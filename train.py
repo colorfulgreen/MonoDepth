@@ -13,6 +13,7 @@ from losses.photometric_reconstruction_loss import BackprojectDepth, Project3D, 
 from losses.ssim import SSIM
 from losses import get_smooth_loss
 from tensorboardX import SummaryWriter
+from utils import disp_to_depth
 
 
 BASE_DIR = Path(__file__).realpath().dirname()
@@ -31,6 +32,8 @@ class Train(object):
         self.SCALES = [0, 1, 2, 3]
         self.SCHEDULER_STEP_SIZE = 15
         self.N_EPOCHS = 20
+        self.MIN_DEPTH = 0.1
+        self.MAX_DEPTH = 100
 
         with open(TRAIN_SPLITS_PATH) as f:
             data_splits = [i.strip() for i in f]
@@ -113,7 +116,7 @@ class Train(object):
     def photometric_reconstruction_loss(self, tgt_img, ref_imgs, intrinsics, disp, poses):
         if disp.shape != tgt_img.shape: # NOTE upsample the lower resolution depth map
             disp = F.interpolate(disp, [self.H, self.W], mode='bilinear', align_corners=False)
-        depth = 1 / disp # TODO depth
+        _, depth = disp_to_depth(disp, self.MIN_DEPTH, self.MAX_DEPTH)
 
         reprojection_losses = []
         cam_coords = self.backproject_depth(depth, intrinsics.inverse())
