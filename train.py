@@ -20,9 +20,9 @@ BASE_DIR = Path(__file__).realpath().dirname()
 # DATA_PATH = os.path.join(BASE_DIR, 'kitti_data')
 DATA_PATH = '../monodepth2/kitti_data'
 TRAIN_SPLITS_PATH = 'splits/eigen_zhou/train_files.txt'
+#TRAIN_SPLITS_PATH = 'splits/eigen_zhou/debug_files.txt'
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
 
 class Train(object):
 
@@ -93,7 +93,7 @@ class Train(object):
             self.tb_writer.add_scalar('photometric_error', loss.item(), self.n_iter)
 
             if i % 10 == 0:
-                print(i, loss)
+                print('iter:', i, 'LOSS:', loss)
 
         self.save_model()
 
@@ -124,7 +124,7 @@ class Train(object):
             pose = poses[:, i]     # [B, 6]
             T = pose_vec2mat(pose)
             pixel_coords = self.project_3d(cam_coords, intrinsics, T)
-            projected_img = F.grid_sample(tgt_img, pixel_coords, padding_mode='zeros', align_corners=True)
+            projected_img = F.grid_sample(ref_img, pixel_coords, padding_mode='zeros', align_corners=True)
             reprojection_losses.append(self.appearance_similarity(tgt_img, projected_img))
         reprojection_losses = torch.cat(reprojection_losses, dim=1)
 
@@ -141,6 +141,10 @@ class Train(object):
         automask = (min_idxs > identity_reprojection_losses.shape[1] - 1).float()
 
         loss = (automask * min_reprojection_losses).mean()  # NOTE per-pixel minimum reprojection loss
+        if False and loss < 0.2:
+            import pdb; pdb.set_trace()
+            from utils import imshow_tensors
+            imshow_tensors([tgt_img, projected_img])
 
         return loss
 
@@ -160,4 +164,6 @@ class Train(object):
 
 
 if __name__ == '__main__':
+    import sys
+    sys.path.insert(0, '.')
     Train().train()

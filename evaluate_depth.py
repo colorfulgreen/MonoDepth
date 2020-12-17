@@ -9,7 +9,7 @@ from nets.resnet import ResNet18
 from nets.depth_decoder import DepthDecoder
 from metrics.depth import depth_error_and_accuracy_metric
 from utils.color import trans_colormapped_depth_image
-from utils import disp_to_depth
+from utils import disp_to_depth, imshow_tensors
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 TEST_SPLITS_PATH = 'splits/eigen/test_files.txt'
@@ -17,6 +17,21 @@ GT_PATH = 'splits/eigen/gt_depths.npz'
 
 MIN_DEPTH = 1E-3
 MAX_DEPTH = 80
+
+def imshow_results(tgt_img, pred_disp, gt_depth):
+    from PIL import Image
+    from data.kitti_dataset import tensor_to_array
+    import pdb; pdb.set_trace()
+    _, pred_depth = disp_to_depth(pred_disp)
+    # im_pred = trans_colormapped_depth_image(pred_depth)
+    # im_gt = trans_colormapped_depth_image(gt_depth)
+    im_pred = Image.fromarray(pred_depth.astype(np.uint8))
+    plt.subplot(1,2,1)
+    plt.imshow(Image.fromarray(tensor_to_array(tgt_img).astype(np.uint8)))
+    plt.subplot(1,2,2)
+    plt.imshow(im_pred, cmap='gray')
+    plt.show()
+
 
 @torch.no_grad()
 def evaluate_depth():
@@ -42,15 +57,7 @@ def evaluate_depth():
         pred_disps.append(pred_disp[-1][0, 0, :].cpu().numpy()) # TODO scales
 
         if True:
-            _, pred_depth = disp_to_depth(pred_disps[-1])
-            import pdb; pdb.set_trace()
-            im_pred = trans_colormapped_depth_image(pred_depth)
-            im_gt = trans_colormapped_depth_image(gt_depths[i])
-            plt.subplot(1,3,2)
-            plt.imshow(im_pred)
-            plt.subplot(1,3,3)
-            plt.imshow(im_gt)
-            plt.show()
+            imshow_results(tgt_img, pred_disps[-1], gt_depths[i])
 
         if i % 100 == 0: print(i)
 
@@ -78,7 +85,6 @@ def evaluate_depth():
         errors.append(depth_error_and_accuracy_metric(gt_depth, pred_depth))
 
     print(np.array(errors).mean(0))
-
 
 
 if __name__ == '__main__' :

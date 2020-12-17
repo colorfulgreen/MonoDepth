@@ -19,6 +19,13 @@ def array_to_tensor(image):
     image = np.transpose(image, (2, 0, 1))
     return torch.from_numpy(image / 255)
 
+def tensor_to_array(tensor):
+    if tensor.ndim == 4:
+        tensor = tensor[0, :]
+    array = tensor.cpu().numpy()
+    image = np.transpose(array, (1, 2, 0))
+    return image * 255
+
 # utils.transforms
 def resize(image, height, width):
     interp = Image.ANTIALIAS # TODO
