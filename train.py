@@ -70,6 +70,7 @@ class Train(object):
 
     def train(self):
         for epoch in range(self.N_EPOCHS):
+            print('\n\n>>>>>>>>>>> EPOCH {} >>>>>>>>>>>>\n\n'.format(epoch))
             self.run_epoch()
 
     def run_epoch(self):
@@ -90,10 +91,10 @@ class Train(object):
             self.optimizer.step()
 
             self.n_iter += 1
-            self.tb_writer.add_scalar('photometric_error', loss.item(), self.n_iter)
+            self.tb_writer.add_scalar('loss', loss.item(), self.n_iter)
 
             if i % 10 == 0:
-                print('iter:', i, 'LOSS:', loss)
+                print('ITER {} LOSS {}'.format(i, loss))
 
         self.save_model()
 
@@ -108,12 +109,16 @@ class Train(object):
             norm_disp = disp / (mean_disp + 1e-7)
             b, _, h, w = disp.shape
             scaled_tgt_img = F.interpolate(tgt_img, (h, w), mode='area')
-            smooth_loss = get_smooth_loss(norm_disp, scaled_tgt_img)
+            smooth_loss = 1e-3 * get_smooth_loss(norm_disp, scaled_tgt_img)
 
             total_loss += reprojection_loss + smooth_loss / (2**scale) # TODO 2**scale
+
+            self.tb_writer.add_scalar('smooth_loss_scale{}'.format(scale), smooth_loss/(2**scale), self.n_iter)
+
         return total_loss / len(self.SCALES)
 
     def photometric_reconstruction_loss(self, tgt_img, ref_imgs, intrinsics, disp, poses):
+        self.tb_writer.add_scalar('disp_mean', disp.mean(), self.n_iter)
         if disp.shape != tgt_img.shape: # NOTE upsample the lower resolution depth map
             disp = F.interpolate(disp, [self.H, self.W], mode='bilinear', align_corners=False)
         _, depth = disp_to_depth(disp, self.MIN_DEPTH, self.MAX_DEPTH)
@@ -140,20 +145,30 @@ class Train(object):
         min_reprojection_losses, min_idxs = torch.min(combined, dim=1)
         automask = (min_idxs > identity_reprojection_losses.shape[1] - 1).float()
 
-        loss = (automask * min_reprojection_losses).mean()  # NOTE per-pixel minimum reprojection loss
-        if False and loss < 0.2:
-            import pdb; pdb.set_trace()
+        # loss = (automask * min_reprojection_losses).mean()  # TODO automask
+        loss = min_reprojection_losses.mean()
+
+        self.tb_writer.add_scalar('reprojection_loss', reprojection_losses.mean(), self.n_iter)
+        self.tb_writer.add_scalar('min_reprojection_loss', min_reprojection_losses.mean(), self.n_iter)
+
+        if False: # and depth.mean() < 0.1001: # and loss < 0.05:
+            print('REPROJECTION LOSS:', loss)
+            print('DEPTH MEAN:', depth.mean())
+            print('POSE MEAN:', pose.mean())
             from utils import imshow_tensors
-            imshow_tensors([tgt_img, projected_img])
+            imshow_tensors(tgt_img, projected_img, depth, self.BATCH_SIZE)
+            import pdb; pdb.set_trace()
 
         return loss
 
     def appearance_similarity(self, tgt_img, projected_img):
         abs_diff = torch.abs(tgt_img - projected_img)
         l1_loss = abs_diff.mean(1, True) # [12, 1, 192, 640]
-        ssim_loss = self.ssim(projected_img, tgt_img)
+        ssim_loss = self.ssim(projected_img, tgt_img).mean(1, True)
         similarity = 0.85 * ssim_loss + 0.15 * l1_loss
-        return similarity
+        self.tb_writer.add_scalar('l1_loss', l1_loss.mean(), self.n_iter)
+        self.tb_writer.add_scalar('ssim_loss', ssim_loss.mean(), self.n_iter)
+        return similarity   # [12, 1, 192, 640]
 
     def save_model(self):
         folder = os.path.join(BASE_DIR, 'runs', 'models')

@@ -23,9 +23,9 @@ def imshow_results(tgt_img, pred_disp, gt_depth):
     from data.kitti_dataset import tensor_to_array
     import pdb; pdb.set_trace()
     _, pred_depth = disp_to_depth(pred_disp)
-    # im_pred = trans_colormapped_depth_image(pred_depth)
-    # im_gt = trans_colormapped_depth_image(gt_depth)
-    im_pred = Image.fromarray(pred_depth.astype(np.uint8))
+    im_pred = trans_colormapped_depth_image(pred_depth)
+#im_gt = trans_colormapped_depth_image(gt_depth)
+#im_pred = Image.fromarray(pred_depth.astype(np.uint8))
     plt.subplot(1,2,1)
     plt.imshow(Image.fromarray(tensor_to_array(tgt_img).astype(np.uint8)))
     plt.subplot(1,2,2)
@@ -54,6 +54,7 @@ def evaluate_depth():
 
         disp_features = depth_encoder(tgt_img)
         pred_disp = depth_decoder(disp_features)
+        import pdb; pdb.set_trace()
         pred_disps.append(pred_disp[-1][0, 0, :].cpu().numpy()) # TODO scales
 
         if True:

@@ -11,6 +11,4 @@ _MODEL_DIR = os.path.join(BASE_DIR, 'runs', 'models')
 DEPTH_ENCODER_PATH = os.path.join(_MODEL_DIR, 'depth_encoder.pth')
 DEPTH_DECODER_PATH = os.path.join(_MODEL_DIR, 'depth_decoder.pth')
 
-
-
 W, H = 640, 192
