@@ -15,7 +15,6 @@ from losses import get_smooth_loss
 from tensorboardX import SummaryWriter
 from utils import disp_to_depth
 
-
 BASE_DIR = Path(__file__).realpath().dirname()
 # DATA_PATH = os.path.join(BASE_DIR, 'kitti_data')
 DATA_PATH = '../monodepth2/kitti_data'

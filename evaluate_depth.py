@@ -2,9 +2,10 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
+import cv2
 
 from config import DATA_PATH, DEPTH_ENCODER_PATH, DEPTH_DECODER_PATH, W, H
-from data.kitti_dataset import KITTIDataset, resize
+from data.kitti_dataset import KITTIDataset
 from nets.resnet import ResNet18
 from nets.depth_decoder import DepthDecoder
 from metrics.depth import depth_error_and_accuracy_metric
@@ -23,9 +24,11 @@ def imshow_results(tgt_img, pred_disp, gt_depth):
     from data.kitti_dataset import tensor_to_array
     import pdb; pdb.set_trace()
     _, pred_depth = disp_to_depth(pred_disp)
-    im_pred = trans_colormapped_depth_image(pred_depth)
-#im_gt = trans_colormapped_depth_image(gt_depth)
-#im_pred = Image.fromarray(pred_depth.astype(np.uint8))
+    im_pred = trans_colormapped_depth_image(pred_disp)
+    #im_gt = trans_colormapped_depth_image(gt_depth)
+    #im_pred = Image.fromarray(pred_depth.astype(np.uint8))
+
+    plt.figure(figsize=(15,5))
     plt.subplot(1,2,1)
     plt.imshow(Image.fromarray(tensor_to_array(tgt_img).astype(np.uint8)))
     plt.subplot(1,2,2)
@@ -54,21 +57,25 @@ def evaluate_depth():
 
         disp_features = depth_encoder(tgt_img)
         pred_disp = depth_decoder(disp_features)
-        import pdb; pdb.set_trace()
         pred_disps.append(pred_disp[-1][0, 0, :].cpu().numpy()) # TODO scales
 
-        if True:
+        if False:
             imshow_results(tgt_img, pred_disps[-1], gt_depths[i])
 
-        if i % 100 == 0: print(i)
+        if i % 100 == 0:
+            print(i)
 
     errors = []
     for i, pred_disp in enumerate(pred_disps):
         gt_depth = gt_depths[i]
         gt_height, gt_width = gt_depth.shape[:2]
 
-        pred_disp = resize(pred_disp, gt_height, gt_width)
+        pred_disp = cv2.resize(pred_disp, (gt_width, gt_height))
         _, pred_depth = disp_to_depth(pred_disp)
+        # pred_depth = 1 / pred_disp
+
+#imshow_results(tgt_img, pred_disp, gt_depth)
+#import pdb; pdb.set_trace()
 
         # TODO
         mask = np.logical_and(gt_depth > MIN_DEPTH, gt_depth < MAX_DEPTH)
@@ -80,8 +87,12 @@ def evaluate_depth():
         pred_depth = pred_depth[mask]
         gt_depth = gt_depth[mask]
 
+        ratio = np.median(gt_depth) / np.median(pred_depth)
+        pred_depth *= ratio
+
         pred_depth[pred_depth < MIN_DEPTH] = MIN_DEPTH
         pred_depth[pred_depth > MAX_DEPTH] = MAX_DEPTH
+
 
         errors.append(depth_error_and_accuracy_metric(gt_depth, pred_depth))
 
